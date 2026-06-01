@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  const QUESTIONS_COUNT = 10;
   const LABELS = ['A', 'B', 'C', 'D'];
 
   const screens = {
@@ -23,6 +22,7 @@
     progressFill: document.getElementById('progress-fill'),
     questionText: document.getElementById('question-text'),
     optionsContainer: document.getElementById('options-container'),
+    answerFeedback: document.getElementById('answer-feedback'),
     resultBadge: document.getElementById('result-badge'),
     resultTitle: document.getElementById('result-title'),
     resultSummary: document.getElementById('result-summary'),
@@ -30,12 +30,19 @@
     statWrong: document.getElementById('stat-wrong'),
     statTotal: document.getElementById('stat-total'),
     resultDetails: document.getElementById('result-details'),
+    btnToggleNav: document.getElementById('btn-toggle-nav'),
+    quizNavPanel: document.getElementById('quiz-nav-panel'),
+    navSummary: document.getElementById('nav-summary'),
+    questionNavGrid: document.getElementById('question-nav-grid'),
   };
 
   let sessionId = null;
+  let navBuilt = false;
   let quizQuestions = [];
   let currentIndex = 0;
   let answers = [];
+  let questionFeedback = [];
+  let checkingAnswer = false;
 
   function showScreen(name) {
     Object.values(screens).forEach((s) => s.classList.remove('screen--active'));
@@ -57,6 +64,69 @@
       throw new Error(msg);
     }
     return data;
+  }
+
+  function updateLiveScore() {
+    const answered = questionFeedback.filter(Boolean).length;
+    const correct = questionFeedback.filter((f) => f && f.isCorrect).length;
+    els.sessionInfo.textContent = answered
+      ? `To'g'ri: ${correct} / ${answered}`
+      : 'Test boshlandi';
+    updateNavSummary();
+  }
+
+  function updateNavSummary() {
+    if (!els.navSummary) return;
+    const total = quizQuestions.length;
+    const answered = questionFeedback.filter(Boolean).length;
+    const correct = questionFeedback.filter((f) => f && f.isCorrect).length;
+    const wrong = questionFeedback.filter((f) => f && !f.isCorrect).length;
+    const unanswered = total - answered;
+    els.navSummary.textContent = `Javob: ${answered} · To'g'ri: ${correct} · Noto'g'ri: ${wrong} · Qolgan: ${unanswered}`;
+  }
+
+  function buildQuestionNav() {
+    if (!els.questionNavGrid || navBuilt) return;
+
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < quizQuestions.length; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nav-item';
+      btn.textContent = String(i + 1);
+      btn.title = `Savol ${i + 1}`;
+      btn.setAttribute('aria-label', `Savol ${i + 1}`);
+      btn.addEventListener('click', () => goToQuestion(i));
+      fragment.appendChild(btn);
+    }
+
+    els.questionNavGrid.innerHTML = '';
+    els.questionNavGrid.appendChild(fragment);
+    navBuilt = true;
+  }
+
+  function updateQuestionNav() {
+    if (!els.questionNavGrid) return;
+
+    els.questionNavGrid.querySelectorAll('.nav-item').forEach((btn, i) => {
+      const feedback = questionFeedback[i];
+      btn.className = 'nav-item';
+
+      if (i === currentIndex) {
+        btn.classList.add('nav-item--current');
+      }
+      if (feedback) {
+        btn.classList.add(feedback.isCorrect ? 'nav-item--correct' : 'nav-item--wrong');
+      }
+    });
+
+    updateNavSummary();
+  }
+
+  function goToQuestion(index) {
+    if (index < 0 || index >= quizQuestions.length || index === currentIndex) return;
+    currentIndex = index;
+    renderQuestion();
   }
 
   async function init() {
@@ -83,9 +153,12 @@
       quizQuestions = data.questions;
       currentIndex = 0;
       answers = new Array(quizQuestions.length).fill(null);
+      questionFeedback = new Array(quizQuestions.length).fill(null);
+      navBuilt = false;
 
       els.sessionInfo.textContent = 'Test boshlandi';
       showScreen('quiz');
+      buildQuestionNav();
       renderQuestion();
     } catch (e) {
       els.startError.textContent = e && e.message ? e.message : 'Testni boshlab bo‘lmadi';
@@ -93,128 +166,176 @@
     }
   }
 
+  function showAnswerFeedback(feedback) {
+    if (!els.answerFeedback) return;
+
+    const q = quizQuestions[currentIndex];
+    els.answerFeedback.hidden = false;
+
+    if (feedback.isCorrect) {
+      els.answerFeedback.className = 'answer-feedback answer-feedback--correct';
+      els.answerFeedback.textContent = "To'g'ri javob!";
+    } else {
+      const correctText = q.options[feedback.correctLabel];
+      els.answerFeedback.className = 'answer-feedback answer-feedback--wrong';
+      els.answerFeedback.innerHTML =
+        `Noto'g'ri. To'g'ri javob: <strong>${feedback.correctLabel}) ${escapeHtml(correctText)}</strong>`;
+    }
+  }
+
+  function applyOptionStyles(feedback) {
+    els.optionsContainer.querySelectorAll('.option').forEach((opt) => {
+      const label = opt.dataset.label;
+      opt.classList.remove('option--selected', 'option--correct', 'option--wrong', 'option--revealed');
+      opt.disabled = true;
+
+      if (label === feedback.userAnswer) {
+        opt.classList.add(feedback.isCorrect ? 'option--correct' : 'option--wrong');
+      } else if (!feedback.isCorrect && label === feedback.correctLabel) {
+        opt.classList.add('option--revealed');
+      }
+    });
+  }
+
   function renderQuestion() {
     const q = quizQuestions[currentIndex];
-    const answered = answers[currentIndex];
+    const feedback = questionFeedback[currentIndex];
+    const total = quizQuestions.length;
 
-    els.questionCounter.textContent = `Savol ${currentIndex + 1} / ${QUESTIONS_COUNT}`;
-    els.progressFill.style.width = `${((currentIndex + 1) / QUESTIONS_COUNT) * 100}%`;
+    els.questionCounter.textContent = `Savol ${currentIndex + 1} / ${total}`;
+    els.progressFill.style.width = `${((currentIndex + 1) / total) * 100}%`;
     els.questionText.textContent = q.question;
 
     els.optionsContainer.innerHTML = '';
+    if (els.answerFeedback) {
+      els.answerFeedback.hidden = true;
+      els.answerFeedback.textContent = '';
+      els.answerFeedback.className = 'answer-feedback';
+    }
+
     LABELS.forEach((label) => {
       if (!q.options[label]) return;
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'option' + (answered === label ? ' option--selected' : '');
+      btn.className = 'option';
       btn.dataset.label = label;
       btn.innerHTML =
         `<span class="option__label">${label}</span>` +
         `<span class="option__text">${escapeHtml(q.options[label])}</span>`;
 
-      btn.addEventListener('click', () => selectAnswer(label));
+      if (!feedback) {
+        btn.addEventListener('click', () => selectAnswer(label));
+      }
+
       els.optionsContainer.appendChild(btn);
     });
 
+    if (feedback) {
+      applyOptionStyles(feedback);
+      showAnswerFeedback(feedback);
+    }
+
     els.btnPrev.disabled = currentIndex === 0;
-    els.btnNext.hidden = currentIndex === quizQuestions.length - 1;
-    els.btnFinish.hidden = currentIndex !== quizQuestions.length - 1;
-    els.btnFinish.disabled = !answers[currentIndex];
-    els.btnNext.disabled = !answers[currentIndex];
+    els.btnNext.hidden = currentIndex === total - 1;
+    els.btnFinish.hidden = currentIndex !== total - 1;
+    const hasAnswer = Boolean(answers[currentIndex]);
+    els.btnNext.disabled = !hasAnswer;
+    els.btnFinish.disabled = !hasAnswer;
+
+    updateQuestionNav();
   }
 
-  function selectAnswer(label) {
-    answers[currentIndex] = label;
+  async function selectAnswer(label) {
+    if (checkingAnswer || questionFeedback[currentIndex]) return;
+
+    checkingAnswer = true;
     els.optionsContainer.querySelectorAll('.option').forEach((opt) => {
-      opt.classList.toggle('option--selected', opt.dataset.label === label);
+      opt.disabled = true;
     });
-    els.btnNext.disabled = false;
-    if (currentIndex === quizQuestions.length - 1) {
-      els.btnFinish.disabled = false;
+
+    try {
+      const data = await fetchJson('/api/quiz/check-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          questionIndex: currentIndex,
+          answer: label,
+        }),
+      });
+
+      const feedback = {
+        userAnswer: label,
+        isCorrect: data.isCorrect,
+        correctLabel: data.correctLabel,
+      };
+
+      answers[currentIndex] = label;
+      questionFeedback[currentIndex] = feedback;
+
+      applyOptionStyles(feedback);
+      showAnswerFeedback(feedback);
+      updateLiveScore();
+      updateQuestionNav();
+
+      els.btnNext.disabled = false;
+      if (currentIndex === quizQuestions.length - 1) {
+        els.btnFinish.disabled = false;
+      }
+    } catch (e) {
+      els.optionsContainer.querySelectorAll('.option').forEach((opt) => {
+        opt.disabled = false;
+      });
+      alert(e && e.message ? e.message : 'Javobni tekshirib bo‘lmadi');
+    } finally {
+      checkingAnswer = false;
     }
   }
 
+  function resetToStart() {
+    sessionId = null;
+    quizQuestions = [];
+    currentIndex = 0;
+    answers = [];
+    questionFeedback = [];
+    navBuilt = false;
+    if (els.questionNavGrid) els.questionNavGrid.innerHTML = '';
+    showScreen('start');
+  }
+
   async function finishQuiz() {
+    const unanswered = answers.findIndex((a) => !a);
+    if (unanswered !== -1) {
+      alert(`Savol ${unanswered + 1} ga javob bering`);
+      currentIndex = unanswered;
+      renderQuestion();
+      return;
+    }
+
     try {
-      const data = await fetchJson('/api/quiz/submit', {
+      await fetchJson('/api/quiz/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, answers }),
       });
 
-      renderResults(data);
+      resetToStart();
     } catch (e) {
-      alert(e && e.message ? e.message : 'Natijani chiqarib bo‘lmadi');
+      alert(e && e.message ? e.message : 'Testni yakunlab bo‘lmadi');
     }
-  }
-
-  function renderResults(data) {
-    const correct = data.correct;
-    const total = data.total;
-    const wrong = data.wrong;
-    const percent = data.percent;
-    const results = data.results;
-
-    els.statCorrect.textContent = correct;
-    els.statWrong.textContent = wrong;
-    els.statTotal.textContent = total;
-
-    if (percent >= 80) {
-      els.resultBadge.className = 'result-badge result-badge--good';
-      els.resultBadge.textContent = '🎉';
-      els.resultTitle.textContent = 'Ajoyib natija!';
-    } else if (percent >= 50) {
-      els.resultBadge.className = 'result-badge result-badge--medium';
-      els.resultBadge.textContent = '👍';
-      els.resultTitle.textContent = 'Yaxshi natija!';
-    } else {
-      els.resultBadge.className = 'result-badge result-badge--bad';
-      els.resultBadge.textContent = '📖';
-      els.resultTitle.textContent = "Yana bir bor urinib ko'ring";
-    }
-
-    els.resultSummary.textContent = `${total} ta savoldan ${correct} tasiga to'g'ri javob berdingiz (${percent}%).`;
-
-    els.resultDetails.innerHTML = results
-      .map((r, idx) => {
-        const userText = r.userAnswer ? r.options[r.userAnswer] : 'Javob berilmagan';
-        const correctText = r.options[r.correctLabel];
-        const isCorrect = r.isCorrect;
-
-        return `
-          <div class="result-item result-item--${isCorrect ? 'correct' : 'wrong'}">
-            <div class="result-item__header">
-              <span>Savol ${idx + 1}</span>
-              <span class="result-item__badge">${isCorrect ? "To'g'ri" : "Noto'g'ri"}</span>
-            </div>
-            <p class="result-item__question">${escapeHtml(r.question)}</p>
-            <p class="result-item__answer">
-              Sizning javobingiz: <strong>${r.userAnswer ? r.userAnswer + ') ' : ''}${escapeHtml(userText)}</strong>
-            </p>
-            ${
-              !isCorrect
-                ? `<p class="result-item__answer">To'g'ri javob: <strong>${r.correctLabel}) ${escapeHtml(
-                    correctText
-                  )}</strong></p>`
-                : ''
-            }
-          </div>
-        `;
-      })
-      .join('');
-
-    showScreen('result');
   }
 
   els.btnStart.addEventListener('click', startQuiz);
-  els.btnRestart.addEventListener('click', () => {
-    sessionId = null;
-    quizQuestions = [];
-    currentIndex = 0;
-    answers = [];
-    showScreen('start');
-  });
+  els.btnRestart.addEventListener('click', resetToStart);
+
+  if (els.btnToggleNav && els.quizNavPanel) {
+    els.btnToggleNav.addEventListener('click', () => {
+      const isOpen = els.btnToggleNav.getAttribute('aria-expanded') === 'true';
+      els.btnToggleNav.setAttribute('aria-expanded', String(!isOpen));
+      els.quizNavPanel.hidden = isOpen;
+    });
+  }
 
   els.btnPrev.addEventListener('click', () => {
     if (currentIndex > 0) {
@@ -238,4 +359,3 @@
 
   init();
 })();
-

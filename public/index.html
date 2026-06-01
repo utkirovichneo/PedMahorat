@@ -14,7 +14,7 @@
     <header class="header">
       <div class="header__inner">
         <h1 class="header__title">Pedagogik Mahorat</h1>
-        <p class="header__subtitle">Mini test — 10 ta tasodifiy savol</p>
+        <p class="header__subtitle">Mini test — 150 ta savol</p>
       </div>
     </header>
 
@@ -24,13 +24,14 @@
           <div class="hero-icon">📚</div>
           <h2>Testga xush kelibsiz!</h2>
           <p>
-            Bazada <strong id="total-questions">150 ta</strong> savol mavjud. Har safar test boshlanganda sizga
-            <strong>10 ta</strong> tasodifiy savol beriladi.
+            Bazada <strong id="total-questions">150 ta</strong> savol mavjud. Testda barcha savollar ketma-ket beriladi.
           </p>
           <ul class="info-list">
             <li>Har bir savolda A, B, C, D variantlari</li>
-            <li>Javoblar joyi har safar aralashtiriladi</li>
-            <li>Oxirida batafsil natija ko'rsatiladi</li>
+            <li>Javob belgilanganda darhol to'g'riligi ko'rsatiladi</li>
+            <li>Noto'g'ri bo'lsa, to'g'ri javob ham ko'rsatiladi</li>
+            <li>Savollar ro'yxati orqali istalgan savolga o'tish mumkin</li>
+            <li>Oxirida umumiy natija chiqadi</li>
           </ul>
           <p id="start-error" class="inline-error" hidden></p>
           <button id="btn-start" class="btn btn--primary btn--large">Testni boshlash</button>
@@ -40,7 +41,7 @@
       <section id="screen-quiz" class="screen">
         <div class="quiz-header">
           <div class="progress-info">
-            <span id="question-counter">Savol 1 / 10</span>
+            <span id="question-counter">Savol 1 / 150</span>
             <span id="session-info" class="score-live"></span>
           </div>
           <div class="progress-bar">
@@ -51,6 +52,7 @@
         <div class="card card--question">
           <p id="question-text" class="question-text"></p>
           <div id="options-container" class="options"></div>
+          <div id="answer-feedback" class="answer-feedback" hidden></div>
         </div>
 
         <div class="quiz-actions">
@@ -58,6 +60,30 @@
           <button id="btn-next" class="btn btn--primary">Keyingi →</button>
           <button id="btn-finish" class="btn btn--success" hidden>Yakunlash</button>
         </div>
+
+        <nav class="quiz-nav" aria-label="Savollar navigatsiyasi">
+          <div class="quiz-nav__header">
+            <button
+              type="button"
+              id="btn-toggle-nav"
+              class="quiz-nav__toggle"
+              aria-expanded="true"
+              aria-controls="quiz-nav-panel"
+            >
+              Savollar ro'yxati
+            </button>
+            <span id="nav-summary" class="quiz-nav__summary"></span>
+          </div>
+          <div id="quiz-nav-panel" class="quiz-nav__panel">
+            <div class="quiz-nav__legend">
+              <span class="legend-item legend-item--current">Joriy</span>
+              <span class="legend-item legend-item--unanswered">Javobsiz</span>
+              <span class="legend-item legend-item--correct">To'g'ri</span>
+              <span class="legend-item legend-item--wrong">Noto'g'ri</span>
+            </div>
+            <div id="question-nav-grid" class="quiz-nav__grid"></div>
+          </div>
+        </nav>
       </section>
 
       <section id="screen-result" class="screen">
@@ -72,7 +98,7 @@
               <span class="stat__label">To'g'ri</span>
             </div>
             <div class="stat stat--total">
-              <span class="stat__value" id="stat-total">10</span>
+              <span class="stat__value" id="stat-total">150</span>
               <span class="stat__label">Jami</span>
             </div>
             <div class="stat stat--wrong">

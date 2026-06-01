@@ -5,7 +5,7 @@ const { questions } = require('./data/questions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const QUIZ_SIZE = 10;
+const QUIZ_SIZE = questions.length;
 
 const sessions = new Map();
 
@@ -66,6 +66,32 @@ app.post('/api/quiz/start', (_req, res) => {
     sessionId,
     total: QUIZ_SIZE,
     questions: prepared.map(({ id, question, options }) => ({ id, question, options })),
+  });
+});
+
+app.post('/api/quiz/check-answer', (req, res) => {
+  const { sessionId, questionIndex, answer } = req.body;
+
+  if (!sessionId || typeof questionIndex !== 'number' || !answer) {
+    return res.status(400).json({ error: 'Noto\'g\'ri so\'rov' });
+  }
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Test sessiyasi topilmadi. Qayta boshlang.' });
+  }
+
+  const q = session.prepared[questionIndex];
+  if (!q) {
+    return res.status(400).json({ error: 'Savol topilmadi' });
+  }
+
+  const isCorrect = answer === q.correctLabel;
+
+  res.json({
+    isCorrect,
+    correctLabel: q.correctLabel,
+    correctText: q.options[q.correctLabel],
   });
 });
 
