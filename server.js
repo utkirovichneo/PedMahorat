@@ -1,11 +1,23 @@
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
-const { questions } = require('./data/questions');
+const { questions: pedagogikMahoratQuestions } = require('./data/questions');
+const { questions: hayotFaoliyatiXavfsizligiQuestions } = require('./data/hayot_faoliyati_xavfsizligi');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const QUIZ_SIZE = questions.length;
+const QUIZZES = {
+  pedagogik_mahorat: {
+    id: 'pedagogik_mahorat',
+    title: 'Pedagogik mahorat',
+    questions: pedagogikMahoratQuestions,
+  },
+  hayot_faoliyati_xavfsizligi: {
+    id: 'hayot_faoliyati_xavfsizligi',
+    title: 'Hayot faoliyati xavfsizligi',
+    questions: hayotFaoliyatiXavfsizligiQuestions,
+  },
+};
 
 const sessions = new Map();
 
@@ -45,26 +57,42 @@ function prepareQuestion(q) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, totalQuestions: questions.length });
+  res.json({
+    ok: true,
+    quizzes: Object.values(QUIZZES).map((q) => ({
+      id: q.id,
+      title: q.title,
+      totalQuestions: q.questions.length,
+    })),
+  });
 });
 
-app.post('/api/quiz/start', (_req, res) => {
-  if (questions.length < QUIZ_SIZE) {
+app.post('/api/quiz/start', (req, res) => {
+  const quizId = (req.body && req.body.quizId) || 'pedagogik_mahorat';
+  const quiz = QUIZZES[quizId];
+  if (!quiz) {
+    return res.status(400).json({ error: 'Fan topilmadi' });
+  }
+  if (!Array.isArray(quiz.questions) || quiz.questions.length === 0) {
     return res.status(500).json({ error: 'Savollar bazasi yetarli emas' });
   }
 
-  const selected = shuffle(questions).slice(0, QUIZ_SIZE);
+  const quizSize = quiz.questions.length; // barcha savollar ketma-ket beriladi
+  const selected = shuffle(quiz.questions).slice(0, quizSize);
   const prepared = selected.map(prepareQuestion);
   const sessionId = crypto.randomUUID();
 
   sessions.set(sessionId, {
+    quizId,
     prepared,
     createdAt: Date.now(),
   });
 
   res.json({
     sessionId,
-    total: QUIZ_SIZE,
+    quizId,
+    title: quiz.title,
+    total: quizSize,
     questions: prepared.map(({ id, question, options }) => ({ id, question, options })),
   });
 });
@@ -153,5 +181,6 @@ app.get('*', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server ishga tushdi: http://localhost:${PORT}`);
-  console.log(`Savollar bazasi: ${questions.length} ta`);
+  const totalAll = Object.values(QUIZZES).reduce((sum, q) => sum + q.questions.length, 0);
+  console.log(`Savollar bazasi: ${totalAll} ta (fanlar: ${Object.keys(QUIZZES).length} ta)`);
 });

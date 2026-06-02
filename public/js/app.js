@@ -12,6 +12,9 @@
   const els = {
     totalQuestions: document.getElementById('total-questions'),
     startError: document.getElementById('start-error'),
+    quizSelect: document.getElementById('quiz-select'),
+    quizTitle: document.getElementById('quiz-title'),
+    quizSubtitle: document.getElementById('quiz-subtitle'),
     btnStart: document.getElementById('btn-start'),
     btnPrev: document.getElementById('btn-prev'),
     btnNext: document.getElementById('btn-next'),
@@ -132,7 +135,15 @@
   async function init() {
     try {
       const health = await fetchJson('/api/health');
-      if (els.totalQuestions) els.totalQuestions.textContent = `${health.totalQuestions} ta`;
+      if (health && Array.isArray(health.quizzes) && els.totalQuestions && els.quizSelect) {
+        const selected = els.quizSelect.value;
+        const q = health.quizzes.find((x) => x.id === selected) || health.quizzes[0];
+        if (q) {
+          els.totalQuestions.textContent = `${q.totalQuestions} ta`;
+          if (els.quizTitle) els.quizTitle.textContent = q.title;
+          if (els.quizSubtitle) els.quizSubtitle.textContent = `Mini test — ${q.totalQuestions} ta savol`;
+        }
+      }
     } catch {
       // health ishlamasa ham UI ishlayveradi
     }
@@ -143,10 +154,11 @@
     els.startError.textContent = '';
 
     try {
+      const quizId = els.quizSelect ? els.quizSelect.value : 'pedagogik_mahorat';
       const data = await fetchJson('/api/quiz/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ quizId }),
       });
 
       sessionId = data.sessionId;
@@ -157,6 +169,8 @@
       navBuilt = false;
 
       els.sessionInfo.textContent = 'Test boshlandi';
+      if (els.quizTitle && data && data.title) els.quizTitle.textContent = data.title;
+      if (els.quizSubtitle && data && data.total) els.quizSubtitle.textContent = `Mini test — ${data.total} ta savol`;
       showScreen('quiz');
       buildQuestionNav();
       renderQuestion();
@@ -164,6 +178,12 @@
       els.startError.textContent = e && e.message ? e.message : 'Testni boshlab bo‘lmadi';
       els.startError.hidden = false;
     }
+  }
+
+  if (els.quizSelect) {
+    els.quizSelect.addEventListener('change', () => {
+      init();
+    });
   }
 
   function showAnswerFeedback(feedback) {

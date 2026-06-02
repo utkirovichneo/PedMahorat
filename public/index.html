@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pedagogik Mahorat — Mini Test</title>
+  <title>Mini Test</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,8 +13,8 @@
   <div class="app">
     <header class="header">
       <div class="header__inner">
-        <h1 class="header__title">Pedagogik Mahorat</h1>
-        <p class="header__subtitle">Mini test — 150 ta savol</p>
+        <h1 id="quiz-title" class="header__title">Pedagogik mahorat</h1>
+        <p id="quiz-subtitle" class="header__subtitle">Mini test</p>
       </div>
     </header>
 
@@ -24,8 +24,15 @@
           <div class="hero-icon">📚</div>
           <h2>Testga xush kelibsiz!</h2>
           <p>
-            Bazada <strong id="total-questions">150 ta</strong> savol mavjud. Testda barcha savollar ketma-ket beriladi.
+            Fan tanlang va testni boshlang. Bazada <strong id="total-questions">—</strong> savol mavjud.
           </p>
+          <div class="field">
+            <label class="field__label" for="quiz-select">Fan</label>
+            <select id="quiz-select" class="field__control">
+              <option value="pedagogik_mahorat" selected>Pedagogik mahorat</option>
+              <option value="hayot_faoliyati_xavfsizligi">Hayot faoliyati xavfsizligi</option>
+            </select>
+          </div>
           <ul class="info-list">
             <li>Har bir savolda A, B, C, D variantlari</li>
             <li>Javob belgilanganda darhol to'g'riligi ko'rsatiladi</li>
