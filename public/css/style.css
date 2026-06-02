@@ -124,6 +124,27 @@ body {
   margin-bottom: 1.25rem;
 }
 
+.quiz-picker {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.quiz-picker__btn {
+  width: 100%;
+}
+
+.quiz-picker__btn--active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.quiz-picker__btn--active:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
 .info-list li {
   padding: 0.5rem 0;
   padding-left: 1.5rem;
@@ -395,6 +416,10 @@ body {
   .nav-item {
     height: 1.875rem;
     font-size: 0.75rem;
+  }
+
+  .quiz-picker {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

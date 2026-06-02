@@ -12,7 +12,7 @@
   const els = {
     totalQuestions: document.getElementById('total-questions'),
     startError: document.getElementById('start-error'),
-    quizSelect: document.getElementById('quiz-select'),
+    quizButtons: Array.from(document.querySelectorAll('[data-quiz-id]')),
     quizTitle: document.getElementById('quiz-title'),
     quizSubtitle: document.getElementById('quiz-subtitle'),
     btnStart: document.getElementById('btn-start'),
@@ -46,6 +46,29 @@
   let answers = [];
   let questionFeedback = [];
   let checkingAnswer = false;
+  let selectedQuizId = 'pedagogik_mahorat';
+  let quizzesCache = null;
+
+  function setActiveQuiz(quizId) {
+    selectedQuizId = quizId || 'pedagogik_mahorat';
+
+    if (els.quizButtons && els.quizButtons.length) {
+      els.quizButtons.forEach((btn) => {
+        const isActive = btn.dataset.quizId === selectedQuizId;
+        btn.classList.toggle('quiz-picker__btn--active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+    }
+
+    if (quizzesCache) {
+      const q = quizzesCache.find((x) => x.id === selectedQuizId) || quizzesCache[0];
+      if (q) {
+        if (els.totalQuestions) els.totalQuestions.textContent = `${q.totalQuestions} ta`;
+        if (els.quizTitle) els.quizTitle.textContent = q.title;
+        if (els.quizSubtitle) els.quizSubtitle.textContent = `Mini test — ${q.totalQuestions} ta savol`;
+      }
+    }
+  }
 
   function showScreen(name) {
     Object.values(screens).forEach((s) => s.classList.remove('screen--active'));
@@ -135,14 +158,9 @@
   async function init() {
     try {
       const health = await fetchJson('/api/health');
-      if (health && Array.isArray(health.quizzes) && els.totalQuestions && els.quizSelect) {
-        const selected = els.quizSelect.value;
-        const q = health.quizzes.find((x) => x.id === selected) || health.quizzes[0];
-        if (q) {
-          els.totalQuestions.textContent = `${q.totalQuestions} ta`;
-          if (els.quizTitle) els.quizTitle.textContent = q.title;
-          if (els.quizSubtitle) els.quizSubtitle.textContent = `Mini test — ${q.totalQuestions} ta savol`;
-        }
+      if (health && Array.isArray(health.quizzes)) {
+        quizzesCache = health.quizzes;
+        setActiveQuiz(selectedQuizId);
       }
     } catch {
       // health ishlamasa ham UI ishlayveradi
@@ -154,7 +172,7 @@
     els.startError.textContent = '';
 
     try {
-      const quizId = els.quizSelect ? els.quizSelect.value : 'pedagogik_mahorat';
+      const quizId = selectedQuizId || 'pedagogik_mahorat';
       const data = await fetchJson('/api/quiz/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,9 +198,16 @@
     }
   }
 
-  if (els.quizSelect) {
-    els.quizSelect.addEventListener('change', () => {
-      init();
+  if (els.quizButtons && els.quizButtons.length) {
+    els.quizButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const quizId = btn.dataset.quizId;
+        setActiveQuiz(quizId);
+        // Fan tanlanganda test darhol boshlansin
+        if (screens.start && screens.start.classList.contains('screen--active')) {
+          startQuiz();
+        }
+      });
     });
   }
 
@@ -258,10 +283,10 @@
 
     els.btnPrev.disabled = currentIndex === 0;
     els.btnNext.hidden = currentIndex === total - 1;
-    els.btnFinish.hidden = currentIndex !== total - 1;
+    els.btnFinish.hidden = false;
     const hasAnswer = Boolean(answers[currentIndex]);
     els.btnNext.disabled = !hasAnswer;
-    els.btnFinish.disabled = !hasAnswer;
+    els.btnFinish.disabled = false;
 
     updateQuestionNav();
   }
@@ -325,12 +350,12 @@
   }
 
   async function finishQuiz() {
-    const unanswered = answers.findIndex((a) => !a);
-    if (unanswered !== -1) {
-      alert(`Savol ${unanswered + 1} ga javob bering`);
-      currentIndex = unanswered;
-      renderQuestion();
-      return;
+    const unansweredCount = answers.filter((a) => !a).length;
+    if (unansweredCount > 0) {
+      const ok = confirm(
+        `Sizda ${unansweredCount} ta javobsiz savol bor. Baribir yakunlaysizmi?`
+      );
+      if (!ok) return;
     }
 
     try {
@@ -372,9 +397,7 @@
   });
 
   els.btnFinish.addEventListener('click', () => {
-    if (answers[currentIndex]) {
-      finishQuiz();
-    }
+    finishQuiz();
   });
 
   init();
