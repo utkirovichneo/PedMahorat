@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { questions: pedagogikMahoratQuestions } = require('./data/questions');
 const { questions: hayotFaoliyatiXavfsizligiQuestions } = require('./data/hayot_faoliyati_xavfsizligi');
+const { questions: oliyMatematikaQuestions } = require('./data/oliy_matematika');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +17,11 @@ const QUIZZES = {
     id: 'hayot_faoliyati_xavfsizligi',
     title: 'Hayot faoliyati xavfsizligi',
     questions: hayotFaoliyatiXavfsizligiQuestions,
+  },
+  oliy_matematika: {
+    id: 'oliy_matematika',
+    title: 'Oliy matematika',
+    questions: oliyMatematikaQuestions,
   },
 };
 

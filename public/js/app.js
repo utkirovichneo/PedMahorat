@@ -82,6 +82,15 @@
     return div.innerHTML;
   }
 
+  function typesetMath(elements) {
+    if (!window.MathJax || typeof window.MathJax.typesetPromise !== 'function') {
+      return Promise.resolve();
+    }
+    const nodes = (elements || []).filter(Boolean);
+    if (!nodes.length) return Promise.resolve();
+    return window.MathJax.typesetPromise(nodes).catch(() => {});
+  }
+
   async function fetchJson(url, options) {
     const res = await fetch(url, options);
     const data = await res.json().catch(() => ({}));
@@ -225,6 +234,7 @@
       els.answerFeedback.className = 'answer-feedback answer-feedback--wrong';
       els.answerFeedback.innerHTML =
         `Noto'g'ri. To'g'ri javob: <strong>${feedback.correctLabel}) ${escapeHtml(correctText)}</strong>`;
+      typesetMath([els.answerFeedback]);
     }
   }
 
@@ -249,7 +259,7 @@
 
     els.questionCounter.textContent = `Savol ${currentIndex + 1} / ${total}`;
     els.progressFill.style.width = `${((currentIndex + 1) / total) * 100}%`;
-    els.questionText.textContent = q.question;
+    els.questionText.innerHTML = escapeHtml(q.question);
 
     els.optionsContainer.innerHTML = '';
     if (els.answerFeedback) {
@@ -280,6 +290,8 @@
       applyOptionStyles(feedback);
       showAnswerFeedback(feedback);
     }
+
+    typesetMath([els.questionText, els.optionsContainer, els.answerFeedback]);
 
     els.btnPrev.disabled = currentIndex === 0;
     els.btnNext.hidden = currentIndex === total - 1;
